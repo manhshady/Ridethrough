@@ -22,8 +22,9 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <service android:name=".GeofenceTransitionsIntentService"/>
-        <service android:name=".GeofenceTrasitionService"/>
+
+        <service android:name=".GeofenceTransitionsIntentService" />
+        <service android:name=".GeofenceTrasitionService" />
         <service android:name=".ActivityRecognizedService" />
         <!--
              The API key for Google Maps-based APIs is defined as a string resource.
@@ -39,7 +40,8 @@
 
         <activity
             android:name=".MapsActivity"
-            android:label="@string/title_activity_maps"></activity>
+            android:label="@string/title_activity_maps" />
+        <activity android:name=".SubmitActivity"></activity>
     </application>
 
 </manifest>

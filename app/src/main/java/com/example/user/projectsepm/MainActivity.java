@@ -68,6 +68,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private TextView txtSpeed;
     private ListView lvData;
     private Button btnMap;
+    private Button btnForm;
 
     private int speed;
     private TrafficJamPoint trafficJamPoint;
@@ -107,7 +108,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        txtSpeed = (TextView) findViewById(R.id.txtSpeed);
+        txtSpeed = (TextView) findViewById(R.id.numSpeed);
         lvData = (ListView) findViewById(R.id.lvData);
         txtActivity = (TextView) findViewById(R.id.txtActivity);
         data = new ArrayList<>();
@@ -123,6 +124,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 Intent intent = new Intent(MainActivity.this, MapsActivity.class);
                 startActivity(intent);
 
+            }
+        });
+        btnForm = (Button) findViewById(R.id.btnForm);
+        btnForm.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(MainActivity.this, SubmitActivity.class);
+                startActivity(intent);
             }
         });
 
@@ -204,7 +213,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         if (mGoogleApiClient.isConnected()) {
             mGoogleApiClient.disconnect();
         }
-        unregisterReceiver(myBroadcastReceiver);
+        //unregisterReceiver(myBroadcastReceiver);
         //stopRepeatingLoadTask();
     }
 
