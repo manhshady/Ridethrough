@@ -47,27 +47,12 @@
             android:layout_height="wrap_content"
             android:text="Form" />
 
-        <LinearLayout
-            android:id="@+id/layout"
-            android:layout_width="wrap_content"
-            android:layout_height="84dp">
-
-            <ListView
-                android:id="@+id/lvData"
-                android:layout_width="match_parent"
-                android:layout_height="277dp"
-                android:visibility="visible">
-
-
-            </ListView>
-
-        </LinearLayout>
         <!--GoogleMap fragment-->
         <fragment xmlns:android="http://schemas.android.com/apk/res/android"
             android:name="com.google.android.gms.maps.MapFragment"
             android:id="@+id/map"
             android:layout_width="match_parent"
-            android:layout_height="match_parent"/>
+            android:layout_height="293dp"/>
 
 
     </LinearLayout>

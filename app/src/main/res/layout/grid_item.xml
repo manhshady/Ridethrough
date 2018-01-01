@@ -10,13 +10,13 @@
         android:layout_width="wrap_content"
         android:width="20dip"
         android:layout_weight="0.65" />
-    <TextView android:id="@+id/latitude"
+    <TextView android:id="@+id/lat"
         android:text="col_1"
         android:layout_height="fill_parent"
         android:layout_width="wrap_content"
         android:width="100dip"
         />
-    <TextView android:id="@+id/longitude"
+    <TextView android:id="@+id/lon"
         android:text="col_2"
         android:layout_height="fill_parent"
         android:layout_width="wrap_content"

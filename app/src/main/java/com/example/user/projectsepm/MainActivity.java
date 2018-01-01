@@ -1,5 +1,6 @@
 package com.example.user.projectsepm;
 
+import android.Manifest;
 import android.app.PendingIntent;
 import android.content.BroadcastReceiver;
 import android.content.Context;
@@ -8,8 +9,12 @@ import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.location.Address;
+import android.location.Geocoder;
 import android.location.Location;
 import android.os.AsyncTask;
+import android.os.Build;
+import android.os.Handler;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -25,6 +30,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
@@ -49,12 +55,15 @@ import com.google.gson.Gson;
 import com.google.gson.reflect.TypeToken;
 
 import java.lang.reflect.Type;
+import java.net.URL;
+import java.net.URLConnection;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
@@ -63,18 +72,20 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         GoogleMap.OnMarkerClickListener,
         GoogleMap.OnMapClickListener,
         com.google.android.gms.location.LocationListener, ResultCallback<Status> {
+
     private GoogleApiClient mGoogleApiClient;
 
     private TextView txtSpeed;
-    private ListView lvData;
+//    private ListView lvData;
     private Button btnMap;
     private Button btnForm;
 
     private int speed;
     private TrafficJamPoint trafficJamPoint;
-
-    private List<HashMap<String, String>> data;
-    private HashMap<String,String> detail;
+    private List<Marker> geoList;
+    //private HashMap<Marker, Circle> markerAndCircle;
+//    private List<HashMap<String, String>> data;
+//    private HashMap<String,String> detail;
     private int activityType;
     private TextView txtActivity;
     private String res;
@@ -92,11 +103,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private PendingIntent geoFencePendingIntent;
     private final int GEOFENCE_REQ_CODE = 0;
     private Circle geoFenceLimits;
-    private static final int REFRESH_JAM_INTERVAL = 30 * 1000;
+    private static final int REFRESH_JAM_INTERVAL = 60 * 1000;
     private android.os.Handler mHandler;
-
+    private static final int PLAY_SERVICES_RESOLUTION_REQUEST = 9000;
 
     private static final String NOTIFICATION_MSG = "NOTIFICATION MSG";
+    private String url = "http://13.229.132.227:3000/trafficJams";
+
+    private MyLocationService mService;
+    private boolean mBound;
     // Create a Intent send by the notification
     public static Intent makeNotificationIntent(Context context, String msg) {
         Intent intent = new Intent( context, MainActivity.class );
@@ -108,14 +123,18 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        txtSpeed = (TextView) findViewById(R.id.numSpeed);
-        lvData = (ListView) findViewById(R.id.lvData);
-        txtActivity = (TextView) findViewById(R.id.txtActivity);
-        data = new ArrayList<>();
-        detail = new HashMap<>();
 
-        mHandler = new android.os.Handler();
-        //startRepeatingLoadTask();
+        txtSpeed = (TextView) findViewById(R.id.numSpeed);
+//        lvData = (ListView) findViewById(R.id.lvData);
+        txtActivity = (TextView) findViewById(R.id.txtActivity);
+//        data = new ArrayList<>();
+//        detail = new HashMap<>();
+        geoList = new ArrayList<>();
+        //markerAndCircle = new HashMap<>();
+        mHandler = new Handler();
+//         if(isConnectedToServer(url, 3000)) {
+//             startRepeatingLoadTask();
+//         }
 
         btnMap = (Button) findViewById(R.id.btnMap);
         btnMap.setOnClickListener(new View.OnClickListener() {
@@ -140,6 +159,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         //intentMyIntentService.putExtra(ActivityRecognizedService.EXTRA_KEY_IN, msgToIntentService);
         startService(intentMyIntentService);
 
+//        Intent intentMyLocationService = new Intent(this, MyLocationService.class);
+//        startService(intentMyLocationService);
+//        bindService(intentMyLocationService, mConnection,Context.BIND_AUTO_CREATE);
+
+
         myBroadcastReceiver = new MyBroadcastReceiver();
         myBroadcastReceiver_Update = new MyBroadcastReceiver_Update();
 
@@ -152,10 +176,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         intentFilter_update.addCategory(Intent.CATEGORY_DEFAULT);
         registerReceiver(myBroadcastReceiver_Update, intentFilter_update);
 
-
-        buildGoogleApiClient();
-        requestPermissions(new String[]{android.Manifest.permission.ACCESS_FINE_LOCATION, android.Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
-        initGMaps();
+        if( checkPlayServices()) {
+            buildGoogleApiClient();
+            mGoogleApiClient.connect();
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
+            }
+            initGMaps();
+        }
 
 
     }
@@ -164,6 +192,12 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     Runnable m_statusChecker = new Runnable() {
         @Override
         public void run() {
+            if (geoList.size() > 0){
+                for (int i = 0; i < geoList.size() ; i++) {
+                    clearGeofence(geoList.get(i));
+                }
+
+            }
             new LoadJamPoints().execute();
             mHandler.postDelayed(m_statusChecker, REFRESH_JAM_INTERVAL);
         }
@@ -183,9 +217,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @Override
     protected void onStart() {
         super.onStart();
-        if (mGoogleApiClient != null) {
-            mGoogleApiClient.connect();
-        }
+//        if (mGoogleApiClient != null) {
+//            mGoogleApiClient.connect();
+//        }
+
+
     }
 
     @Override
@@ -210,11 +246,36 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @Override
     protected void onStop() {
         super.onStop();
+
+    }
+
+//    private ServiceConnection mConnection = new ServiceConnection() {
+//        @Override
+//        public void onServiceConnected(ComponentName componentName, IBinder service) {
+//            MyLocationService.LocalBinder binder = (MyLocationService.LocalBinder) service;
+//            mService = binder.getService();
+//            mBound = true;
+//        }
+//
+//        @Override
+//        public void onServiceDisconnected(ComponentName componentName) {
+//            mBound = false;
+//        }
+//    };
+
+    @Override
+    protected void onDestroy() {
+        super.onDestroy();
         if (mGoogleApiClient.isConnected()) {
             mGoogleApiClient.disconnect();
         }
-        //unregisterReceiver(myBroadcastReceiver);
-        //stopRepeatingLoadTask();
+//        if(mBound) {
+//            unbindService(mConnection);
+//            mBound = false;
+//        }
+        unregisterReceiver(myBroadcastReceiver);
+        unregisterReceiver(myBroadcastReceiver_Update);
+        stopRepeatingLoadTask();
     }
 
     public synchronized void buildGoogleApiClient() {
@@ -224,10 +285,23 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 .addApi(LocationServices.API)
                 .addApi(ActivityRecognition.API)
                 .build();
-        //mGoogleApiClient.connect();
+
     }
-
-
+    private boolean checkPlayServices() {
+        GoogleApiAvailability apiAvailability = GoogleApiAvailability.getInstance();
+        int resultCode = apiAvailability.isGooglePlayServicesAvailable(this);
+        if (resultCode != ConnectionResult.SUCCESS) {
+            if (apiAvailability.isUserResolvableError(resultCode)) {
+                apiAvailability.getErrorDialog(this, resultCode, PLAY_SERVICES_RESOLUTION_REQUEST)
+                        .show();
+            } else {
+                Log.i(TAG, "This device is not supported.");
+                finish();
+            }
+            return false;
+        }
+        return true;
+    }
 
 
     @Override
@@ -238,6 +312,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         ActivityRecognition.ActivityRecognitionApi.requestActivityUpdates(mGoogleApiClient, 1000, pendingIntent);
         getLastKnownLocation();
         //recoverGeofenceMarker();
+        //if(mGoogleApiClient.isConnected()){
+
+        startRepeatingLoadTask();
+
+        //}
+
+
 
     }
 
@@ -245,10 +326,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     public void onMapReady(GoogleMap googleMap) {
                 Log.d(TAG, "onMapReady()");
                 map = googleMap;
-                map.setOnMapClickListener(this);
+                //map.setOnMapClickListener(this);
                 map.setOnMarkerClickListener(this);
 
                 map.getUiSettings().setMyLocationButtonEnabled(true);
+
     }
 
     @Override
@@ -290,14 +372,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 speed =(int) ((location.getSpeed()*3600)/1000);
                 txtSpeed.setText(speed + " km/h");
 
-                if(speed < 15) {
+                if(speed < 6) {
                     DateFormat dateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z");
                     String date = dateFormat.format(Calendar.getInstance().getTime());
 
 //                    detail = new HashMap<>();
 //                    detail.put("Speed", "" + speed);
-//                    detail.put("lat", "" + location.getLatitude());
-//                    detail.put("lon", "" + location.getLongitude());
+//                    detail.put("lat", "" + location.getLat());
+//                    detail.put("lon", "" + location.getLon());
 //                    detail.put("Time", "" + date);
 //                    if (data.size() == 0) {
 //                        data.add(detail);
@@ -307,24 +389,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     trafficJamPoint = new TrafficJamPoint(speed, date, location.getLatitude(), location.getLongitude());
                     Log.e("Jam point", trafficJamPoint.toString());
                     //Log.e("Data", data.toString());
-                    ArrayAdapter<HashMap<String, String>> arrayAdapter = new ArrayAdapter<HashMap<String, String>>(MainActivity.this, android.R.layout.simple_list_item_1, data);
-                    lvData.setAdapter(arrayAdapter);
+//                    ArrayAdapter<HashMap<String, String>> arrayAdapter = new ArrayAdapter<HashMap<String, String>>(MainActivity.this, android.R.layout.simple_list_item_1, data);
+//                    lvData.setAdapter(arrayAdapter);
                     new UpdateData().execute(trafficJamPoint);
                     writeActualLocation(location);
                 }
             }
      }
 
-    @Override
-    public void onResult(@NonNull Status status) {
-        Log.i(TAG, "onResult: " + status);
-        if ( status.isSuccess() ) {
-            //saveGeofence();
-            drawGeofence();
-        } else {
-            // inform about fail
-        }
-    }
 
 
     public class MyBroadcastReceiver extends BroadcastReceiver {
@@ -333,7 +405,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         public void onReceive(Context context, Intent intent) {
             activityType = intent.getIntExtra(ActivityRecognizedService.EXTRA_KEY_OUT, 99);
             Log.e("Activity type","" +  activityType);
-            //textResult.setText(result);
+
         }
     }
 
@@ -352,7 +424,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         @Override
         protected Void doInBackground(TrafficJamPoint... trafficJamPoints) {
-            res = HttpHandler.doPost("http://13.229.132.227:3000/traffic-jams", trafficJamPoints[0]);
+            res = HttpHandler.doPost("http://13.229.132.227:3000/trafficJams", trafficJamPoints[0]);
             return null;
         }
 
@@ -362,6 +434,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             if (res.equals("")){
 
                 Toast.makeText(MainActivity.this, "Cannot connect to the server", Toast.LENGTH_SHORT).show();
+            }else {
+                Toast.makeText(MainActivity.this, res, Toast.LENGTH_SHORT).show();
+
             }
         }
     }
@@ -386,8 +461,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             private LocationRequest locationRequest;
             // Defined in mili seconds.
             // This number in extremely low, and should be used only for debug
-            private final int UPDATE_INTERVAL =  30*1000;
-            private final int FASTEST_INTERVAL = 10*1000;
+            private final int UPDATE_INTERVAL =  60*1000;
+            private final int FASTEST_INTERVAL = 30*1000;
 
             // Start location Updates
             private void startLocationUpdates(){
@@ -460,10 +535,11 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             private Marker locationMarker;
             private void markerLocation(LatLng latLng) {
                 Log.i(TAG, "markerLocation("+latLng+")");
-                String title = latLng.latitude + ", " + latLng.longitude;
+                String title = getCompleteAddressString(latLng.latitude, latLng.longitude);
                 MarkerOptions markerOptions = new MarkerOptions()
                         .position(latLng)
-                        .title(title);
+                        .title(title)
+                        .icon(BitmapDescriptorFactory.defaultMarker(BitmapDescriptorFactory.HUE_VIOLET));
                 if ( map!=null ) {
                     // Remove the anterior marker
                     if ( locationMarker != null )
@@ -479,7 +555,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             // Create a marker for the geofence creation
             private void markerForGeofence(LatLng latLng) {
                 Log.i(TAG, "markerForGeofence(" + latLng + ")");
-                String title = latLng.latitude + ", " + latLng.longitude;
+                String title = getCompleteAddressString(latLng.latitude, latLng.longitude);
                 // Define marker options
                 MarkerOptions markerOptions = new MarkerOptions()
                         .position(latLng)
@@ -487,14 +563,36 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                         .title(title);
                 if (map != null) {
                     // Remove last geoFenceMarker
-                    if (geoFenceMarker != null)
-                        geoFenceMarker.remove();
+//                    if (geoFenceMarker != null)
+//                        geoFenceMarker.remove();
 
                     geoFenceMarker = map.addMarker(markerOptions);
                     startGeofence();
                 }
-
             }
+    private String getCompleteAddressString(double LATITUDE, double LONGITUDE) {
+        String strAdd = "";
+        Geocoder geocoder = new Geocoder(this, Locale.getDefault());
+        try {
+            List<Address> addresses = geocoder.getFromLocation(LATITUDE, LONGITUDE, 1);
+            if (addresses != null) {
+                Address returnedAddress = addresses.get(0);
+                StringBuilder strReturnedAddress = new StringBuilder("");
+
+                for (int i = 0;  i <= returnedAddress.getMaxAddressLineIndex() ; i++) {
+                    strReturnedAddress.append(returnedAddress.getAddressLine(i)).append("\n");
+                }
+                strAdd = strReturnedAddress.toString();
+                Log.w("Current loction address", "" + strReturnedAddress.toString());
+            } else {
+                Log.w("Current loction address", "No Address returned!");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+            Log.w("Current loction address", "Canont get Address!");
+        }
+        return strAdd;
+    }
 
             // Create a Geofence
             private Geofence createGeofence( LatLng latLng, float radius ) {
@@ -538,6 +636,18 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     ).setResultCallback(this);
             }
 
+    @Override
+    public void onResult(@NonNull Status status) {
+        Log.i(TAG, "onResult: " + status);
+        if ( status.isSuccess() ) {
+            saveGeofence();
+            //drawGeofence();
+        } else {
+            // inform about fail
+        }
+    }
+
+
     // Start Geofence creation process
     private void startGeofence() {
         Log.i(TAG, "startGeofence()");
@@ -571,16 +681,17 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     private void drawGeofence() {
         Log.d(TAG, "drawGeofence()");
 
-        if ( geoFenceLimits != null )
-            geoFenceLimits.remove();
+//        if ( geoFenceLimits != null )
+//            geoFenceLimits.remove();
 
         CircleOptions circleOptions = new CircleOptions()
                 .center( geoFenceMarker.getPosition())
-                .strokeColor(Color.TRANSPARENT)
+                .strokeColor(Color.RED)
                 .strokeWidth(2)
-                .fillColor( 0x40ff0000 )
+                .fillColor( 0x15f45642 )
                 .radius( GEOFENCE_RADIUS );
         geoFenceLimits = map.addCircle( circleOptions );
+
     }
 
     // Saving GeoFence marker with prefs mng
@@ -612,7 +723,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     }
 
     // Clear Geofence
-    private void clearGeofence() {
+    private void clearGeofence(final Marker geoMarker) {
         Log.d(TAG, "clearGeofence()");
         LocationServices.GeofencingApi.removeGeofences(
                 mGoogleApiClient,
@@ -622,18 +733,20 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             public void onResult(@NonNull Status status) {
                 if ( status.isSuccess() ) {
                     // remove drawing
-                    removeGeofenceDraw();
+//                    removeGeofenceDraw(geoMarker, circle);
+                    if ( geoMarker != null)
+                        geoMarker.remove();
                 }
             }
         });
     }
 
-    private void removeGeofenceDraw() {
+    private void removeGeofenceDraw(Marker marker,Circle circle) {
         Log.d(TAG, "removeGeofenceDraw()");
-        if ( geoFenceMarker != null)
-            geoFenceMarker.remove();
-        if ( geoFenceLimits != null )
-            geoFenceLimits.remove();
+        if ( marker != null)
+            marker.remove();
+        if ( circle != null )
+            circle.remove();
     }
 
     private String getResquest;
@@ -641,29 +754,53 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         @Override
         protected Void doInBackground(Void... voids) {
-            getResquest = HttpHandler.getJSONFromUrl("http://13.229.132.227:3000/");
+            if (isConnectedToServer(url, 3000)){
+                getResquest = HttpHandler.getJSONFromUrl(url);
+                Log.e("getRequest", getResquest);
+
+            }
+
             return null;
         }
 
         @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
+            geoList.clear();
             Gson gson = new Gson();
             Type listType = new TypeToken<List<TrafficJamPoint>>(){}.getType();
             List<TrafficJamPoint> jamPointList = gson.fromJson(getResquest, listType);
-            List<Map<String, Double>> data = new ArrayList<>();
+            Log.e("jamPointList", jamPointList.toString());
 
+            //List<Map<String, Double>> data = new ArrayList<>();
             for (TrafficJamPoint trafficJamPoint: jamPointList ) {
-                Map<String, Double > element = new HashMap<>();
-                element.put("lat", trafficJamPoint.getLatitude());
-                element.put("lon", trafficJamPoint.getLongitude());
-                data.add(element);
-                Log.e("Received data", data.toString());
+//                Map<String, Double > element = new HashMap<>();
+//                element.put("lat", trafficJamPoint.getLat());
+//                element.put("lon", trafficJamPoint.getLon());
+//                data.add(element);
 
+                LatLng trafficJam = new LatLng(trafficJamPoint.getLat(), trafficJamPoint.getLon());
+                markerForGeofence(trafficJam);
 
+                startGeofence();
+                //drawGeofence();
             }
-            //TODO: implement to display geoMakers on map base on the data
+//            Log.e("Received data", data.toString());
+            //TODO: implement to display geoMarkers on map base on the data
 
+        }
+
+
+    }
+    public boolean isConnectedToServer(String url, int timeout) {
+        try{
+            URL myUrl = new URL(url);
+            URLConnection connection = myUrl.openConnection();
+            connection.setConnectTimeout(timeout);
+            connection.connect();
+            return true;
+        } catch (Exception e) {
+            return false;
         }
     }
 

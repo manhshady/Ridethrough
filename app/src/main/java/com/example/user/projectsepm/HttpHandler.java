@@ -2,7 +2,6 @@ package com.example.user.projectsepm;
 
 import android.util.Log;
 
-import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -15,9 +14,6 @@ import java.io.OutputStream;
 import java.io.OutputStreamWriter;
 import java.net.HttpURLConnection;
 import java.net.URL;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
 
 /**
  * Created by user on 6/12/2017.
@@ -48,8 +44,8 @@ public class HttpHandler {
 
             JSONObject jsonObject = new JSONObject();
             jsonObject.put("speed", trafficJamPoint.getSpeed());
-            jsonObject.put("lat", trafficJamPoint.getLatitude());
-            jsonObject.put("lon", trafficJamPoint.getLongitude());
+            jsonObject.put("lat", trafficJamPoint.getLat());
+            jsonObject.put("lon", trafficJamPoint.getLon());
             jsonObject.put("datetime", trafficJamPoint.getDatetime());
 
 
@@ -102,7 +98,9 @@ public class HttpHandler {
         try {
             URL u = new URL(url);
             httpURLConnection = (HttpURLConnection) u.openConnection();
+            //httpURLConnection.setConnectTimeout(timeout);
             httpURLConnection.setRequestMethod("GET");
+           // httpURLConnection.connect();
             bufferedReader = new BufferedReader(new InputStreamReader(httpURLConnection.getInputStream()));
             stringBuilder = new StringBuilder();
 

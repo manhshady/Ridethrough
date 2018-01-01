@@ -13,17 +13,17 @@ public class TrafficJamPoint {
     @SerializedName("datetime")
     private String datetime;
 
-    @SerializedName("latitude")
-    private double latitude;
+    @SerializedName("lat")
+    private double lat;
 
-    @SerializedName("longitude")
-    private double longitude;
+    @SerializedName("lon")
+    private double lon;
 
     public TrafficJamPoint(int speed,String datetime, double lantitude, double longitude) {
         this.speed = speed;
         this.datetime = datetime;
-        this.latitude = lantitude;
-        this.longitude = longitude;
+        this.lat = lantitude;
+        this.lon = longitude;
     }
 
 //    public String getCurrentDatetime() {
@@ -49,20 +49,20 @@ public class TrafficJamPoint {
         this.datetime = datetime;
     }
 
-    public double getLatitude() {
-        return latitude;
+    public double getLat() {
+        return lat;
     }
 
-    public void setLatitude(double latitude) {
-        this.latitude = latitude;
+    public void setLat(double lat) {
+        this.lat = lat;
     }
 
-    public double getLongitude() {
-        return longitude;
+    public double getLon() {
+        return lon;
     }
 
-    public void setLongitude(double longitude) {
-        this.longitude = longitude;
+    public void setLon(double lon) {
+        this.lon = lon;
     }
 
     @Override
@@ -70,8 +70,8 @@ public class TrafficJamPoint {
         return "TrafficJamPoint{" +
                 "speed=" + speed +
                 ", datetime='" + datetime + '\'' +
-                ", latitude=" + latitude +
-                ", longitude=" + longitude +
+                ", lat=" + lat +
+                ", lon=" + lon +
                 '}';
     }
 }
