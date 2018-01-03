@@ -22,6 +22,9 @@ import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.Menu;
+import android.view.MenuInflater;
+import android.view.MenuItem;
 import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
@@ -38,6 +41,7 @@ import com.google.android.gms.location.ActivityRecognition;
 import com.google.android.gms.location.DetectedActivity;
 import com.google.android.gms.location.Geofence;
 import com.google.android.gms.location.GeofencingRequest;
+import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdate;
@@ -71,7 +75,8 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         OnMapReadyCallback,
         GoogleMap.OnMarkerClickListener,
         GoogleMap.OnMapClickListener,
-        com.google.android.gms.location.LocationListener, ResultCallback<Status> {
+        LocationListener, ResultCallback<Status>,
+        GoogleMap.OnMyLocationButtonClickListener {
 
     private GoogleApiClient mGoogleApiClient;
 
@@ -123,36 +128,37 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-
-        txtSpeed = (TextView) findViewById(R.id.numSpeed);
-//        lvData = (ListView) findViewById(R.id.lvData);
-        txtActivity = (TextView) findViewById(R.id.txtActivity);
+//
+//        txtSpeed = (TextView) findViewById(R.id.numSpeed);
+////        lvData = (ListView) findViewById(R.id.lvData);
+//        txtActivity = (TextView) findViewById(R.id.txtActivity);
 //        data = new ArrayList<>();
 //        detail = new HashMap<>();
-        geoList = new ArrayList<>();
+
         //markerAndCircle = new HashMap<>();
+        geoList = new ArrayList<>();
         mHandler = new Handler();
 //         if(isConnectedToServer(url, 3000)) {
 //             startRepeatingLoadTask();
 //         }
 
-        btnMap = (Button) findViewById(R.id.btnMap);
-        btnMap.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(MainActivity.this, MapsActivity.class);
-                startActivity(intent);
-
-            }
-        });
-        btnForm = (Button) findViewById(R.id.btnForm);
-        btnForm.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View view) {
-                Intent intent = new Intent(MainActivity.this, SubmitActivity.class);
-                startActivity(intent);
-            }
-        });
+//        btnMap = (Button) findViewById(R.id.btnMap);
+//        btnMap.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                Intent intent = new Intent(MainActivity.this, MapsActivity.class);
+//                startActivity(intent);
+//
+//            }
+//        });
+//        btnForm = (Button) findViewById(R.id.btnForm);
+//        btnForm.setOnClickListener(new View.OnClickListener() {
+//            @Override
+//            public void onClick(View view) {
+//                Intent intent = new Intent(MainActivity.this, SubmitActivity.class);
+//                startActivity(intent);
+//            }
+//        });
 
         //Start MyIntentService
         Intent intentMyIntentService = new Intent(this, ActivityRecognizedService.class);
@@ -178,7 +184,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 
         if( checkPlayServices()) {
             buildGoogleApiClient();
-            mGoogleApiClient.connect();
+//           mGoogleApiClient.connect();
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                 requestPermissions(new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, 1);
             }
@@ -198,7 +204,10 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 }
 
             }
+           // Log.w("geoListB4", geoList.toString());
+
             new LoadJamPoints().execute();
+           // Log.w("geoListAfter", geoList.toString());
             mHandler.postDelayed(m_statusChecker, REFRESH_JAM_INTERVAL);
         }
 
@@ -217,9 +226,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     @Override
     protected void onStart() {
         super.onStart();
-//        if (mGoogleApiClient != null) {
-//            mGoogleApiClient.connect();
-//        }
+        if (mGoogleApiClient != null) {
+            mGoogleApiClient.connect();
+        }
 
 
     }
@@ -285,6 +294,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 .addApi(LocationServices.API)
                 .addApi(ActivityRecognition.API)
                 .build();
+        //mGoogleApiClient.connect();
 
     }
     private boolean checkPlayServices() {
@@ -328,8 +338,15 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                 map = googleMap;
                 //map.setOnMapClickListener(this);
                 map.setOnMarkerClickListener(this);
-
+                map.setTrafficEnabled(true);
+                if(checkPermission())
+                map.setMyLocationEnabled(true);
+                map.setOnMyLocationButtonClickListener(this);
                 map.getUiSettings().setMyLocationButtonEnabled(true);
+//                getLastKnownLocation();
+//                CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation.getLatitude()
+//                        , lastLocation.getLongitude()), 12f);
+//                map.animateCamera(cameraUpdate);
 
     }
 
@@ -346,6 +363,14 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
      }
 
 
+    @Override
+    public boolean onMyLocationButtonClick() {
+        getLastKnownLocation();
+        CameraUpdate cameraUpdate = CameraUpdateFactory.newLatLngZoom(new LatLng(lastLocation.getLatitude()
+                , lastLocation.getLongitude()), 12f);
+        map.animateCamera(cameraUpdate);
+        return false;
+    }
 
     // Initialize GoogleMaps
      private void initGMaps(){
@@ -365,12 +390,12 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
      @Override
      public void onLocationChanged(Location location) {
          if (location == null ){
-            txtSpeed.setText("00 km/h");
+            //txtSpeed.setText("00 km/h");
             } else if (activityType == DetectedActivity.IN_VEHICLE) {  //Start record user's data only when they are driving
                 //Diaplay the moving speed
                 Log.e("Speed",location.getSpeed() + "" );
                 speed =(int) ((location.getSpeed()*3600)/1000);
-                txtSpeed.setText(speed + " km/h");
+                //txtSpeed.setText(speed + " km/h");
 
                 if(speed < 6) {
                     DateFormat dateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z");
@@ -392,7 +417,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 //                    ArrayAdapter<HashMap<String, String>> arrayAdapter = new ArrayAdapter<HashMap<String, String>>(MainActivity.this, android.R.layout.simple_list_item_1, data);
 //                    lvData.setAdapter(arrayAdapter);
                     new UpdateData().execute(trafficJamPoint);
-                    writeActualLocation(location);
+                    //writeActualLocation(location);
                 }
             }
      }
@@ -415,7 +440,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         public void onReceive(Context context, Intent intent) {
             activityType = intent.getIntExtra(ActivityRecognizedService.EXTRA_KEY_UPDATE, 100);
             Log.e("Activity type","" + activityType);
-            txtActivity.setText("Activity type: " + activityType);
+            //txtActivity.setText("Activity type: " + activityType);
 
         }
     }
@@ -449,7 +474,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                         Log.i(TAG, "LasKnown location. " +
                                 "Long: " + lastLocation.getLongitude() +
                                 " | Lat: " + lastLocation.getLatitude());
-                        writeLastLocation();
+                        //writeLastLocation();
                         startLocationUpdates();
                     } else {
                         Log.w(TAG, "No location retrieved yet");
@@ -522,8 +547,9 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             }
 
             // Write location coordinates on UI
-            private void writeActualLocation(Location location) {
-                markerLocation(new LatLng(location.getLatitude(), location.getLongitude()));
+            private LatLng writeActualLocation(Location location) {
+                //markerLocation(new LatLng(location.getLatitude(), location.getLongitude()));
+                return new LatLng(location.getLatitude(), location.getLongitude());
             }
 
             private void writeLastLocation() {
@@ -567,6 +593,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 //                        geoFenceMarker.remove();
 
                     geoFenceMarker = map.addMarker(markerOptions);
+                    geoList.add(geoFenceMarker);
                     startGeofence();
                 }
             }
@@ -583,13 +610,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
                     strReturnedAddress.append(returnedAddress.getAddressLine(i)).append("\n");
                 }
                 strAdd = strReturnedAddress.toString();
-                Log.w("Current loction address", "" + strReturnedAddress.toString());
+                Log.w("Loction address", "" + strReturnedAddress.toString());
             } else {
-                Log.w("Current loction address", "No Address returned!");
+                Log.w("Loction address", "No Address returned!");
             }
         } catch (Exception e) {
             e.printStackTrace();
-            Log.w("Current loction address", "Canont get Address!");
+            Log.w("Loction address", "Canont get Address!");
         }
         return strAdd;
     }
@@ -660,23 +687,24 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
         }
     }
 
-//    @Override
-//    public boolean onCreateOptionsMenu(Menu menu) {
-//        MenuInflater inflater = getMenuInflater();
-//        inflater.inflate( R.menu.main_menu, menu );
-//        return true;
-//    }
-//
-//    @Override
-//    public boolean onOptionsItemSelected(MenuItem item) {
-//        switch ( item.getItemId() ) {
-//            case R.id.geofence: {
-//                startGeofence();
-//                return true;
-//            }
-//        }
-//        return super.onOptionsItemSelected(item);
-//    }
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        MenuInflater inflater = getMenuInflater();
+        inflater.inflate( R.menu.main_menu, menu );
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch ( item.getItemId() ) {
+            case R.id.report: {
+                Intent intent = new Intent(MainActivity.this, SubmitActivity.class);
+                startActivity(intent);
+                return true;
+            }
+        }
+        return super.onOptionsItemSelected(item);
+    }
 
     private void drawGeofence() {
         Log.d(TAG, "drawGeofence()");
@@ -757,16 +785,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             if (isConnectedToServer(url, 3000)){
                 getResquest = HttpHandler.getJSONFromUrl(url);
                 Log.e("getRequest", getResquest);
-
             }
-
             return null;
         }
-
         @Override
         protected void onPostExecute(Void aVoid) {
             super.onPostExecute(aVoid);
-            geoList.clear();
+            //geoList.clear();
             Gson gson = new Gson();
             Type listType = new TypeToken<List<TrafficJamPoint>>(){}.getType();
             List<TrafficJamPoint> jamPointList = gson.fromJson(getResquest, listType);
@@ -780,10 +805,17 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
 //                data.add(element);
 
                 LatLng trafficJam = new LatLng(trafficJamPoint.getLat(), trafficJamPoint.getLon());
-                markerForGeofence(trafficJam);
+//                for (int i = 0; i < geoList.size(); i++) {
+//                    if(geoList.get(i).getPosition() == trafficJam){
+//
+//                    }else {
+                        markerForGeofence(trafficJam);
 
-                startGeofence();
-                //drawGeofence();
+                        startGeofence();
+                        //drawGeofence();
+//                    }
+//                }
+
             }
 //            Log.e("Received data", data.toString());
             //TODO: implement to display geoMarkers on map base on the data

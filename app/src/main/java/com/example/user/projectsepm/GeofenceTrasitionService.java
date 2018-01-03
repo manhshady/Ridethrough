@@ -53,7 +53,8 @@ public class GeofenceTrasitionService extends IntentService {
             String geofenceTransitionDetails = getGeofenceTrasitionDetails(geoFenceTransition, triggeringGeofences );
 
             // Send notification details as a String
-            sendNotification( geofenceTransitionDetails );
+            //sendNotification( geofenceTransitionDetails );
+            sendNotification("Nearby Traffic Jam");
         }
     }
 
@@ -104,7 +105,7 @@ public class GeofenceTrasitionService extends IntentService {
                 .setSmallIcon(R.drawable.ic_dialog_close_dark)
                 .setColor(Color.RED)
                 .setContentTitle(msg)
-                .setContentText("You are close to a traffic jam point")
+                .setContentText("You are close to a traffic jam ")
                 .setContentIntent(notificationPendingIntent)
                 .setDefaults(Notification.DEFAULT_LIGHTS | Notification.DEFAULT_VIBRATE | Notification.DEFAULT_SOUND)
                 .setAutoCancel(true);
