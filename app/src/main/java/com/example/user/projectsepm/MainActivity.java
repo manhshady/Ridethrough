@@ -795,27 +795,29 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
             Gson gson = new Gson();
             Type listType = new TypeToken<List<TrafficJamPoint>>(){}.getType();
             List<TrafficJamPoint> jamPointList = gson.fromJson(getResquest, listType);
-            Log.e("jamPointList", jamPointList.toString());
+            if (jamPointList!= null) {
+                Log.e("jamPointList", jamPointList.toString());
 
-            //List<Map<String, Double>> data = new ArrayList<>();
-            for (TrafficJamPoint trafficJamPoint: jamPointList ) {
+                //List<Map<String, Double>> data = new ArrayList<>();
+                for (TrafficJamPoint trafficJamPoint : jamPointList) {
 //                Map<String, Double > element = new HashMap<>();
 //                element.put("lat", trafficJamPoint.getLat());
 //                element.put("lon", trafficJamPoint.getLon());
 //                data.add(element);
 
-                LatLng trafficJam = new LatLng(trafficJamPoint.getLat(), trafficJamPoint.getLon());
+                    LatLng trafficJam = new LatLng(trafficJamPoint.getLat(), trafficJamPoint.getLon());
 //                for (int i = 0; i < geoList.size(); i++) {
 //                    if(geoList.get(i).getPosition() == trafficJam){
 //
 //                    }else {
-                        markerForGeofence(trafficJam);
+                    markerForGeofence(trafficJam);
 
-                        startGeofence();
-                        //drawGeofence();
+                    startGeofence();
+                    //drawGeofence();
 //                    }
 //                }
 
+                }
             }
 //            Log.e("Received data", data.toString());
             //TODO: implement to display geoMarkers on map base on the data
