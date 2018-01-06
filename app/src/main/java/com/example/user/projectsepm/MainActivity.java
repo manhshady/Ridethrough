@@ -91,7 +91,7 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
     //private HashMap<Marker, Circle> markerAndCircle;
 //    private List<HashMap<String, String>> data;
 //    private HashMap<String,String> detail;
-    private int activityType;
+    private int activityType = 99;
     private TextView txtActivity;
     private String res;
 
@@ -391,13 +391,13 @@ public class MainActivity extends AppCompatActivity implements GoogleApiClient.C
      public void onLocationChanged(Location location) {
          if (location == null ){
             //txtSpeed.setText("00 km/h");
-            } else if (activityType == DetectedActivity.IN_VEHICLE) {  //Start record user's data only when they are driving
+            } else  {
                 //Diaplay the moving speed
                 Log.e("Speed",location.getSpeed() + "" );
                 speed =(int) ((location.getSpeed()*3600)/1000);
                 //txtSpeed.setText(speed + " km/h");
 
-                if(speed < 6) {
+                if(activityType == DetectedActivity.IN_VEHICLE && speed < 6) { //Start record user's data only when they are driving
                     DateFormat dateFormat = new SimpleDateFormat("EEE, d MMM yyyy HH:mm:ss Z");
                     String date = dateFormat.format(Calendar.getInstance().getTime());
 

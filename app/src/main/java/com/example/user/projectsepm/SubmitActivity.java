@@ -81,7 +81,8 @@ public class SubmitActivity extends AppCompatActivity {
                 lon = latLngFromAddress.longitude;
                 TrafficJamPoint trafficJamPoint = new TrafficJamPoint(speed, txtDatetime.getText() +"", lat, lon);
                 new UpdateData().execute(trafficJamPoint);
-                Toast.makeText(SubmitActivity.this, trafficJamPoint.toString(), Toast.LENGTH_SHORT).show();
+                //Toast.makeText(SubmitActivity.this, trafficJamPoint.toString(), Toast.LENGTH_SHORT).show();
+
             }
         });
 
@@ -175,6 +176,9 @@ public class SubmitActivity extends AppCompatActivity {
             if (res.equals("")){
 
                 Toast.makeText(SubmitActivity.this, "Cannot connect to the server", Toast.LENGTH_SHORT).show();
+            } else{
+                Toast.makeText(SubmitActivity.this, "Report sent", Toast.LENGTH_SHORT).show();
+                finish();
             }
         }
     }

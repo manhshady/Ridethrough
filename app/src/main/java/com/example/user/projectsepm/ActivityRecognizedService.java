@@ -77,29 +77,39 @@ public class ActivityRecognizedService extends IntentService {
             switch( activity.getType() ) {
                 case DetectedActivity.IN_VEHICLE: {
                     Log.e( "ActivityRecogition", "In Vehicle: " + activity.getConfidence() );
-                    if( activity.getConfidence() >= 75 ) {
-                        NotificationCompat.Builder builder = new NotificationCompat.Builder(this);
-                        builder.setContentText( "Are you driving?" );
-                        builder.setSmallIcon( R.mipmap.ic_launcher );
-                        builder.setContentTitle( getString( R.string.app_name ) );
-                        NotificationManagerCompat.from(this).notify(0, builder.build());
-                        setActivitytype(DetectedActivity.IN_VEHICLE);
+                   if( activity.getConfidence() >= 75 ) {
+//                        NotificationCompat.Builder builder = new NotificationCompat.Builder(this);
+//                        builder.setContentText( "Are you driving?" );
+//                        builder.setSmallIcon( R.mipmap.ic_launcher );
+//                        builder.setContentTitle( getString( R.string.app_name ) );
+//                        NotificationManagerCompat.from(this).notify(0, builder.build());
+                       setActivitytype(DetectedActivity.IN_VEHICLE);
                     }
+
                     break;
                 }
                 case DetectedActivity.ON_BICYCLE: {
                     Log.e( "ActivityRecogition", "On Bicycle: " + activity.getConfidence() );
-                    //setActivitytype(DetectedActivity.ON_BICYCLE);
+                    if( activity.getConfidence() >= 75 ) {
+
+                        setActivitytype(DetectedActivity.ON_BICYCLE);
+                    }
                     break;
                 }
                 case DetectedActivity.ON_FOOT: {
                     Log.e( "ActivityRecogition", "On Foot: " + activity.getConfidence() );
-                    //setActivitytype(DetectedActivity.ON_FOOT);
+                    if( activity.getConfidence() >= 75 ) {
+
+                        setActivitytype(DetectedActivity.ON_FOOT);
+                    }
                     break;
                 }
                 case DetectedActivity.RUNNING: {
                     Log.e( "ActivityRecogition", "Running: " + activity.getConfidence() );
-                    //setActivitytype(DetectedActivity.RUNNING);
+                    if( activity.getConfidence() >= 75 ) {
+
+                        setActivitytype(DetectedActivity.RUNNING);
+                    }
                     break;
                 }
                 case DetectedActivity.STILL: {
